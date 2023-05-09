@@ -1,0 +1,2 @@
+
+230413> added script to /etc/rc.local - python ~/hikari/fire_osc.py &
