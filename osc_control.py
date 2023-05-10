@@ -36,7 +36,7 @@ import random
 import time
 
 from pythonosc import udp_client
-print("otakiage")
+print("Otakiage controller running...")
 
 def led(led_name):
     #turn YELLOW led ON
