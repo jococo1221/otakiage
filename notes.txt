@@ -1,2 +1,6 @@
 
+Useful git:
+git diff --stat origin
+git branch -a
+
 230413> added script to /etc/rc.local - python ~/hikari/fire_osc.py &
