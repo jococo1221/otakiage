@@ -1,6 +1,14 @@
 
 Useful git:
-git diff --stat origin
+--pushing
 git branch -a
+git diff --stat origin
+git commit -m ""
+
+--pulling
+git pull origin main
+
+-- run with logs (saved on home/logs directory)
+/usr/bin/python /home/pi/otakiage/fire_osc.py > ~/logs/no_errors.txt 2> ~/logs/errors.txt &
 
 230413> added script to /etc/rc.local - python ~/hikari/fire_osc.py &
