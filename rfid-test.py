@@ -7,6 +7,20 @@ import sys
 
 from pirc522 import RFID
 
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BOARD)
+# GPIO.setwarnings(False)
+LED_1 = 13
+GPIO.setup(LED_1, GPIO.OUT)
+LED_2 = 15
+GPIO.setup(LED_2, GPIO.OUT)
+
+led1State = True
+led2State = True
+GPIO.output(LED_1, led1State) 
+GPIO.output(LED_2, led2State) 
+previous_uid=0
+
 run = True
 #rdr = RFID(bus=0, device=0)  # Replace with the appropriate bus and device numbers
 
@@ -53,9 +67,20 @@ while run:
     (error, uid) = rdr.anticoll()
     if not error:
 
-        tag_found = False
-
+        tag_found = True
         detected_uid=uid
+
+        # toggle LEDS on detection
+        led1State = not led1State
+        GPIO.output(LED_1, led1State)
+
+        # toggle this LED on NEW detection only
+        if previous_uid!=detected_uid:
+            led2State = not led2State
+            GPIO.output(LED_2, led2State)
+            previous_uid=detected_uid
+            
+
 
         tag_key, tag_message = detect_tag(detected_uid)
 
@@ -75,6 +100,7 @@ print("\nAuthorizing")
 util.auth(rdr.auth_a, [0x12, 0x34, 0x56, 0x78, 0x96, 0x92])
 # Uncomment the line below if authentication method B is necessary
 # util.auth(rdr.auth_b, [0x74, 0x00, 0x52, 0x35, 0x00, 0xFF])
+
 
 print("\nReading")
 # Adjust the block number based on your RFID card's structure
