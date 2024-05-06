@@ -14,13 +14,35 @@ min_flare=5
 flare_frequency=6 #/10
 max_flare_freq=30
 min_flare_freq=1
-interval=1/60 #seconds
+interval=1/30 #seconds
 cooling_speed=.02
+
+i2c_address=0x27
+i2c_address2=0x26
+
+# PCF8574 I2C-Bus Slave Address Map
+#     SWITCH        PCF8574 I2C-Bus
+# A2   A1   AO   Slave Address
+# L    L    L    0x27
+# L    L    H    0x26
+# L    H    L    0x25
+# L    H    H    0x24
+# H    L    L    0x23
+# H    L    H    0x22
+# H    H    L    0x21
+# H    H    H    0x20
+
 
 ip1=initial_intensity
 ip2=initial_intensity
 ip3=initial_intensity
 ip4=initial_intensity
+
+ip5=initial_intensity
+ip6=initial_intensity
+ip7=initial_intensity
+ip8=initial_intensity
+
 # ip1=initial_intensity
 # ip2=initial_intensity
 # ip3=initial_intensity
@@ -59,7 +81,7 @@ def define_intensity(intensity_input):
         intensity -= decrement 
     if (intensity+increment<max_value):
         intensity += increment 
-    if (flare_frequency/10>=flare_random and ip1 + flare_intensity < max_value):
+    if (flare_frequency/10>=flare_random and intensity_input + flare_intensity < max_value):
         intensity += flare_intensity 
     #print(random.randrange(1,10))
     return intensity
@@ -123,21 +145,39 @@ async def loop():
     global ip2
     global ip3
     global ip4
+
+    global ip5
+    global ip6
+    global ip7
+    global ip8
     
     
     #for i in range(10000):
     while True:    
         ip1=define_intensity(ip1)
-        bus.write_byte_data(0x27, 0x80, int(max_value-ip1))
+        bus.write_byte_data(i2c_address, 0x80, int(max_value-ip1))
         
         ip2=define_intensity(ip2)
-        bus.write_byte_data(0x27, 0x81, int(max_value-ip2))
+        bus.write_byte_data(i2c_address, 0x81, int(max_value-ip2))
         
         ip3=define_intensity(ip3)
-        bus.write_byte_data(0x27, 0x82, int(max_value-ip3))
+        bus.write_byte_data(i2c_address, 0x82, int(max_value-ip3))
         
         ip4=define_intensity(ip4)
-        bus.write_byte_data(0x27, 0x83, int(max_value-ip4))
+        bus.write_byte_data(i2c_address, 0x83, int(max_value-ip4))
+
+        #second controler
+        ip5=define_intensity(ip5)
+        bus.write_byte_data(i2c_address2, 0x80, int(max_value-ip5))
+        
+        ip6=define_intensity(ip6)
+        bus.write_byte_data(i2c_address2, 0x81, int(max_value-ip6))
+        
+        ip7=define_intensity(ip7)
+        bus.write_byte_data(i2c_address2, 0x82, int(max_value-ip7))
+        
+        ip8=define_intensity(ip8)
+        bus.write_byte_data(i2c_address2, 0x83, int(max_value-ip8))
         
         #print(f"L{i}", end = '')
         await asyncio.sleep(interval)

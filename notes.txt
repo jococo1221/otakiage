@@ -1,9 +1,9 @@
 
 Useful git:
 --pushing
-git branch -a
-git diff --stat origin
-git commit -m ""
+git branch -a #List all remote branches 
+git diff --stat origin #See status of local repository compared to remote
+git commit -m "" #Comit with message between quotes
 
 --pulling
 git pull origin main
