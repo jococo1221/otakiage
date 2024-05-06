@@ -1,6 +1,7 @@
 
 Useful git:
 --pushing
+git fetch origin #I think I need this - fetch the latest changes from the remote repository to ensure you have the most up-to-date version.
 git branch -a #List all remote branches 
 git diff --stat origin/main #See status of local repository compared to remote
 git add * #Add all files
