@@ -2,8 +2,10 @@
 Useful git:
 --pushing
 git branch -a #List all remote branches 
-git diff --stat origin #See status of local repository compared to remote
+git diff --stat origin/main #See status of local repository compared to remote
+git add * #Add all files
 git commit -m "" #Comit with message between quotes
+git push origin main 
 
 --pulling
 git pull origin main
@@ -11,4 +13,28 @@ git pull origin main
 -- run with logs (saved on home/logs directory)
 /usr/bin/python /home/pi/otakiage/fire_osc.py > ~/logs/no_errors.txt 2> ~/logs/errors.txt &
 
+240400> now running script with tmux - sudo /home/pi/start_script.sh >> /home/pi/start_script.log 2>&1
 230413> added script to /etc/rc.local - python ~/hikari/fire_osc.py &
+
+
+### - TMUX - prevents session from dying when I disconnect from the system
+
+sudo tmux attach -t fuegosession
+
+
+# ../startup_script.sh (240505)
+
+#start tmux session
+echo Fuego running
+/usr/bin/tmux new-session -d -s fuegosession
+/usr/bin/tmux send-keys -t fuegosession "python /home/pi/otakiage/fire_audio.py" C-m
+#tmux send-keys -t fuegosession "python /home/pi/ymca/ymca_loop.py >> /home/pi/rc_local_log.txt 2>&1 &" C-m
+
+
+#other command that I want to run
+#python /home/pi/ymca/ymca_loop.py >> /home/pi/rc_local_log.txt 2>&1 &
+
+
+# Optionally, you can detach from the tmux session after starting it
+#tmux detach -s mysession
+
