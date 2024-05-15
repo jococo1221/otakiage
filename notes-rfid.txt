@@ -1,0 +1,8 @@
+
+
+pip3 install pi-rc522
+
+We also need to enable SPI, which is disabled by default in Raspberry PI OS. From terminal:
+sudo raspi-config
+
+reboot
