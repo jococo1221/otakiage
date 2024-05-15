@@ -39,9 +39,8 @@ x = 100
 while True:
     intensidad = round(intensidad, 1)
     (error, data) = rdr.request()
-    if not error:
-        #print("no error")
-        
+    #if not error:
+        #print("no error")        
     (error, uid) = rdr.anticoll()
     if not error:
         tag_key = detect_tag(uid)
