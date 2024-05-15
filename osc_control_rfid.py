@@ -40,18 +40,20 @@ while True:
     intensidad = round(intensidad, 1)
     (error, data) = rdr.request()
     if not error:
-        print(f"Tag {tag_key} detected. {rfid_tags[tag_key]['message']}")
+        #print("no error")
         
     (error, uid) = rdr.anticoll()
     if not error:
         tag_key = detect_tag(uid)
+        print(f"Tag {tag_key} detected. {rfid_tags[tag_key]['message']}")
+        
         if tag_key is not None:
-            if tag_key == 1:  # Blue tag 1, increase intensity
+            if (tag_key == 1 or tag_key == 3) :  # Blue tag 1, increase intensity
                 if (intensidad + 0.1) <= 1:
                     intensidad += 0.1
                 value = intensidad
                 client.send_message("/1/fader5", value)
-            elif tag_key == 2:  # Blue tag 2, decrease intensity
+            elif (tag_key == 2 or tag_key == 4):  # Blue tag 2, decrease intensity
                 if (intensidad - 0.1) >= 0 and (intensidad - 0.1) <= 1:
                     intensidad -= 0.1
                 value = intensidad
