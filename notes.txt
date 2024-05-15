@@ -2,9 +2,9 @@
 Useful git:
 --pushing
 git fetch origin #I think I need this - fetch the latest changes from the remote repository to ensure you have the most up-to-date version.
-git branch -a #List all remote branches 
-git diff --stat origin/main #See status of local repository compared to remote
+git branch -a #List all remote branches - to verify name of the branch 
 git add * #Add all files
+git diff --stat origin/main #See status of local repository compared to remote
 git commit -m "" #Comit with message between quotes
 git push origin main 
 
@@ -14,14 +14,38 @@ git pull origin main
 -- run with logs (saved on home/logs directory)
 /usr/bin/python /home/pi/otakiage/fire_osc.py > ~/logs/no_errors.txt 2> ~/logs/errors.txt &
 
+
+--overwritting local
+
+git fetch origin
+git reset --hard origin/main # Reset your local branch to match the state of the remote branch. This command will move the HEAD pointer and reset the index and the working directory to the state of the remote branch.If you're working on the main branch:
+
+
+--Agregar cuenta
+Go to your GitHub account settings.
+Navigate to "Developer settings" > "Personal access t."
+Click on "Generate new t."
+Give your token a descriptive name and select the scopes or permissions you need.
+Click "Generate t" and make sure to copy the t to a safe place.
+Use this t as your password when prompted for authentication in Git operations.
+fichita git rpi2 240506 Z ghp_EZKGsYp2mGoFFvRBziJS0xzGHfgyjg3hptP
+
+
 240400> now running script with tmux - sudo /home/pi/start_script.sh >> /home/pi/start_script.log 2>&1
 230413> added script to /etc/rc.local - python ~/hikari/fire_osc.py &
 
 
+
 ### - TMUX - prevents session from dying when I disconnect from the system
 
-sudo tmux attach -t fuegosession
+oscclientsession
 
+
+sudo tmux attach -t fuegosession
+You can detach from your tmux session by pressing Ctrl+B then D.
+
+# /etc/rc.local
+sudo /home/pi/start_script.sh >> /home/pi/start_script.log 2>&1
 
 # ../startup_script.sh (240505)
 
