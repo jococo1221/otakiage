@@ -364,6 +364,7 @@ def osc_set_multitoggle(address, *args):
     if address=="/4/multitoggle/1/8": ip8=target_value
 
     if address=="/4/multitoggle/2/1":
+        print("increase")
         b_increase_fire()
     if address=="/4/multitoggle/2/2":
         b_decrease_fire()
@@ -376,13 +377,31 @@ def osc_set_multitoggle(address, *args):
     #if (address + )== "/4/multitoggle/1/1: (1.0,)"
 
 def b_increase_fire():
-        play_sound_in_thread("./fire_up_fd.wav", .2)
+        print('up')
+        intensity_step(.1)
 
 def b_decrease_fire():
-        play_sound_in_thread("./fire_down_fd.wav", .2)
+        print('down')
+        intensity_step(-.1)
+        # play_sound_in_thread("./fire_down_fd.wav", .2)
 
 def b_crickets():
         play_sound_in_thread("./crickets_fd.wav", .5)
+
+def intensity_step(delta):
+    global target_intensity
+    global min_value
+    global max_value
+
+    proposed_value=target_intensity + delta*max_value
+
+    if ((proposed_value <= max_value) and (proposed_value >= min_value)):
+            target_intensity = proposed_value
+            if delta <0: play_sound_in_thread("./fire_down_fd.wav", .2)
+            if delta >0: play_sound_in_thread("./fire_up_fd.wav", .2)
+
+
+
 
 
 def osc_set_intensity(unused_addr, args, parameter):
