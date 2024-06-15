@@ -1,3 +1,8 @@
+import pygame
+
+# Initialize Pygame mixer
+pygame.mixer.init()
+
 #-----LIGHTS
 
 
@@ -117,6 +122,14 @@ duration = 0.1  # Duration of each audio frame in seconds
 sample_rate = 44100  # Change this to a supported sample rate
 blocksize = 16*1024 #1024  # Buffer size
 
+def play_sound(file_path, volume=1.0):
+    sound = pygame.mixer.Sound(file_path)
+    sound.set_volume(volume)
+    sound.play()
+
+# Function to play a sound in a new thread
+def play_sound_in_thread(file_path, volume=1.0):
+    threading.Thread(target=play_sound, args=(file_path, volume)).start()
 
 def get_sample_rate():
     # Query the default input device to get its current configuration
@@ -235,6 +248,12 @@ def randomize_intensity(intensity_input, audio_factor):
     if volume_transient==True:
         boom=(audio_factor-1)
         print("boom:",boom)
+        print("/1/fader5-", "Fader blue", ", target_intensity:", target_intensity)
+        print("/1/fader1-", "Fader 1", ", mic_influence_percentage: ", mic_influence_percentage)
+        print("/1/fader2-", "Fader 2", ", variability_range: ", variability_range)
+        print("/1/fader3-", "Fader 3", ", snap_range: ", snap_range)
+        print("/1/fader4-", "Fader 4", ", flare_frequency: ", flare_frequency)
+
     else:
         boom=0
     
@@ -343,10 +362,27 @@ def osc_set_multitoggle(address, *args):
     if address=="/4/multitoggle/1/6": ip6=target_value
     if address=="/4/multitoggle/1/7": ip7=target_value
     if address=="/4/multitoggle/1/8": ip8=target_value
+
+    if address=="/4/multitoggle/2/1":
+        b_increase_fire()
+    if address=="/4/multitoggle/2/2":
+        b_decrease_fire()
+    if address=="/4/multitoggle/2/3":
+        b_crickets()
+
         #print(address)    
     #print(f"{address}: {args}")
     
     #if (address + )== "/4/multitoggle/1/1: (1.0,)"
+
+def b_increase_fire():
+        play_sound_in_thread("./fire_up_fd.wav", .2)
+
+def b_decrease_fire():
+        play_sound_in_thread("./fire_down_fd.wav", .2)
+
+def b_crickets():
+        play_sound_in_thread("./crickets_fd.wav", .5)
 
 
 def osc_set_intensity(unused_addr, args, parameter):
@@ -386,11 +422,12 @@ def osc_set_flare_freq(unused_addr, args, parameter):
   global max_flare_freq
   global min_flare_freq
   flare_frequency=int(max_flare_freq + parameter*(max_flare_freq-min_flare_freq))
+  #print("flare_frequency: ", flare_frequency)
 
 def osc_set_mic_influence_percentage(unused_addr, args, parameter):
   global mic_influence_percentage
   mic_influence_percentage=int(parameter*100)
-  #print("Mic influence: ", parameter)
+  #print("mic_influence_percentage: ", mic_influence_percentage)
   
 
 
