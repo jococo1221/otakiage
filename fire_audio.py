@@ -240,19 +240,22 @@ def audio_processing():
 
 
 #----
+def status_report():
+    print("/1/fader5-", "Fader blue", ", target_intensity:", target_intensity)
+    # print("/1/fader1-", "Fader 1", ", mic_influence_percentage: ", mic_influence_percentage)
+    # print("/1/fader2-", "Fader 2", ", variability_range: ", variability_range)
+    # print("/1/fader3-", "Fader 3", ", snap_range: ", snap_range)
+    # print("/1/fader4-", "Fader 4", ", flare_frequency: ", flare_frequency)
+
 
 def randomize_intensity(intensity_input, audio_factor):
         
     boom=0
     #enhance transient
     if volume_transient==True:
-        boom=(audio_factor-1)
-        print("boom:",boom)
-        print("/1/fader5-", "Fader blue", ", target_intensity:", target_intensity)
-        print("/1/fader1-", "Fader 1", ", mic_influence_percentage: ", mic_influence_percentage)
-        print("/1/fader2-", "Fader 2", ", variability_range: ", variability_range)
-        print("/1/fader3-", "Fader 3", ", snap_range: ", snap_range)
-        print("/1/fader4-", "Fader 4", ", flare_frequency: ", flare_frequency)
+        # boom=(audio_factor-1)
+        # print("boom:",boom)
+        status_report()
 
     else:
         boom=0
@@ -336,6 +339,7 @@ def filter_handler(address, *args):
     #print(args[1]) #this one throws an error
 
 def osc_set_multitoggle(address, *args):
+    print("MULTITOGGLE")
     global ip1
     global ip2
     global ip3
@@ -370,6 +374,8 @@ def osc_set_multitoggle(address, *args):
         b_decrease_fire()
     if address=="/4/multitoggle/2/3":
         b_crickets()
+    if address=="/4/multitoggle/2/7":
+        b_mario()
 
         #print(address)    
     #print(f"{address}: {args}")
@@ -386,7 +392,10 @@ def b_decrease_fire():
         # play_sound_in_thread("./fire_down_fd.wav", .2)
 
 def b_crickets():
-        play_sound_in_thread("./crickets_fd.wav", .5)
+        play_sound_in_thread("/home/pi/otakiage/crickets_fd.wav", .5)
+
+def b_mario():
+        play_sound_in_thread("/home/pi/otakiage/mario_jump.mp3", .1)
 
 def intensity_step(delta):
     global target_intensity
@@ -397,8 +406,9 @@ def intensity_step(delta):
 
     if ((proposed_value <= max_value) and (proposed_value >= min_value)):
             target_intensity = proposed_value
-            if delta <0: play_sound_in_thread("./fire_down_fd.wav", .2)
-            if delta >0: play_sound_in_thread("./fire_up_fd.wav", .2)
+            if delta <0: play_sound_in_thread("/home/pi/otakiage/fire_down_fd.wav", .2)
+            if delta >0: play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", .2)
+    else: play_sound_in_thread("/home/pi/otakiage/drop.wav", .2)
 
 
 
