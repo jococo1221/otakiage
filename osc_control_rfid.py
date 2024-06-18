@@ -1,6 +1,7 @@
 import time
 import board
 import busio
+import threading
 from digitalio import DigitalInOut
 from adafruit_pn532.i2c import PN532_I2C
 from pythonosc import udp_client
@@ -64,9 +65,8 @@ def fadeout_light_effect(delay=0.02, steps=10):
         time.sleep(delay)
 
 def move_light_effect(delay=0.02):
-
-    white = (127, 127, 127) # Warm white color at 50% intensity
-    dim_white = (10, 10, 10) # Warm white color at 50% intensity
+    white = (127, 127, 127)  # Warm white color at 50% intensity
+    dim_white = (10, 10, 10)  # Warm white color at 50% intensity
 
     # Turn off all pixels
     pixels.fill(dim_white)
@@ -91,6 +91,26 @@ def move_light_effect(delay=0.02):
 def tag_read_light_effect():
     move_light_effect()
 
+def breathing_light_effect(delay=0.02, steps=100):
+    breath_depth = 30  # Maximum brightness level
+    while True:
+        for step in range(steps + 1):
+            intensity = int(breath_depth * step / steps)
+            dim_color = (intensity, int(.1*intensity), int(.1*intensity))
+            pixels.fill(dim_color)
+            pixels.show()
+            time.sleep(delay)
+        for step in range(steps + 1):
+            intensity = int(breath_depth * (steps - step) / steps)
+            dim_color = (intensity, int(.1*intensity), int(.1*intensity))
+            pixels.fill(dim_color)
+            pixels.show()
+            time.sleep(delay)
+
+# Start breathing light effect in a separate thread
+breathing_thread = threading.Thread(target=breathing_light_effect)
+breathing_thread.daemon = True
+breathing_thread.start()
 
 # Main loop
 while True:
