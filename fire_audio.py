@@ -35,7 +35,7 @@ min_flare_freq=1
 interval=1/60 #seconds
 cooling_speed=.01
 
-mic_influence_percentage=50
+mic_influence_percentage=30
 volume_percentage_last_measure=0
 
 
@@ -376,6 +376,8 @@ def osc_set_multitoggle(address, *args):
         b_crickets()
     if address=="/4/multitoggle/2/7":
         b_mario()
+    if address=="/4/multitoggle/2/8":
+        b_error()
 
         #print(address)    
     #print(f"{address}: {args}")
@@ -397,6 +399,14 @@ def b_crickets():
 def b_mario():
         play_sound_in_thread("/home/pi/otakiage/mario_jump.mp3", .1)
 
+def b_warning():
+        play_sound_in_thread("/home/pi/otakiage/drop.wav", .1)
+
+def b_error():
+        play_sound_in_thread("/home/pi/otakiage/drop.wav", .1)
+        time.sleep(.2)
+        play_sound_in_thread("/home/pi/otakiage/drop.wav", .1)
+
 def intensity_step(delta):
     global target_intensity
     global min_value
@@ -408,7 +418,7 @@ def intensity_step(delta):
             target_intensity = proposed_value
             if delta <0: play_sound_in_thread("/home/pi/otakiage/fire_down_fd.wav", .2)
             if delta >0: play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", .2)
-    else: play_sound_in_thread("/home/pi/otakiage/drop.wav", .2)
+    else: b_warning()
 
 
 
