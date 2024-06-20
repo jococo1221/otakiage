@@ -1,11 +1,11 @@
 import time
+import threading
 import board
 import busio
-import threading
-from digitalio import DigitalInOut
 from adafruit_pn532.i2c import PN532_I2C
-from pythonosc import udp_client
+from pythonosc import udp_client, osc_message_builder
 import neopixel
+import socket
 
 # Initialize I2C bus and PN532
 i2c = busio.I2C(board.SCL, board.SDA)
@@ -14,15 +14,30 @@ pn532 = PN532_I2C(i2c, debug=False)
 # Configure PN532 to communicate with RFID tags
 pn532.SAM_configuration()
 
-# Define OSC client
+# Define OSC client with retry mechanism
 args = {"ip": "shine.local", "port": 5005}
-client = udp_client.SimpleUDPClient(args["ip"], args["port"])
+max_retries = 5
+retry_delay = 5
+client = None
+
+for attempt in range(max_retries):
+    try:
+        client = udp_client.SimpleUDPClient(args["ip"], args["port"])
+        # Test connection
+        client.send_message("/test", 1.0)
+        print(f"Connected to OSC server on {args['ip']}:{args['port']}")
+        break
+    except (socket.gaierror, ConnectionRefusedError):
+        print(f"Failed to connect to OSC server. Retrying in {retry_delay} seconds...")
+        time.sleep(retry_delay)
+else:
+    print("Could not connect to OSC server. Continuing without OSC server.")
 
 # Define GPIO pin for the NeoPixel data line
 PIXEL_PIN = board.D18  # Assuming data line is connected to GPIO 18
 
-# Define the number of pixels (24 for your ring)
-NUM_PIXELS = 24
+# Define the number of pixels (24 for your ring, 48 for two rings)
+NUM_PIXELS = 48
 
 # Initialize NeoPixel strip
 pixels = neopixel.NeoPixel(PIXEL_PIN, NUM_PIXELS, brightness=0.5)
@@ -46,74 +61,127 @@ def detect_tag(uid):
     return None
 
 # LED animation functions
-def fadein_light_effect(delay=0.02, steps=10):
-    max_brightness = 10  # Maximum brightness level
+def shine_light_effect(delay=0.01, steps=5, ring=1):
+    max_brightness = 220  # Maximum brightness level
+    start_index = (ring - 1) * NUM_PIXELS // 2
     for step in range(steps + 1):
         intensity = int(max_brightness * step / steps)
         dim_white = (intensity, intensity, intensity)
-        pixels.fill(dim_white)
+        for i in range(start_index, start_index + NUM_PIXELS // 2):
+            pixels[i] = dim_white
         pixels.show()
         time.sleep(delay)
-
-def fadeout_light_effect(delay=0.02, steps=10):
-    max_brightness = 10  # Maximum brightness level
+    steps = 2
     for step in range(steps + 1):
         intensity = int(max_brightness * (steps - step) / steps)
         dim_white = (intensity, intensity, intensity)
-        pixels.fill(dim_white)
+        for i in range(start_index, start_index + NUM_PIXELS // 2):
+            pixels[i] = dim_white
         pixels.show()
         time.sleep(delay)
 
-def move_light_effect(delay=0.02):
+def fadein_light_effect(delay=0.02, steps=10, ring=1):
+    max_brightness = 10  # Maximum brightness level
+    start_index = (ring - 1) * NUM_PIXELS // 2
+    for step in range(steps + 1):
+        intensity = int(max_brightness * step / steps)
+        dim_white = (intensity, intensity, intensity)
+        for i in range(start_index, start_index + NUM_PIXELS // 2):
+            pixels[i] = dim_white
+        pixels.show()
+        time.sleep(delay)
+
+def fadeout_light_effect(delay=0.02, steps=10, ring=1):
+    max_brightness = 10  # Maximum brightness level
+    start_index = (ring - 1) * NUM_PIXELS // 2
+    for step in range(steps + 1):
+        intensity = int(max_brightness * (steps - step) / steps)
+        dim_white = (intensity, intensity, intensity)
+        for i in range(start_index, start_index + NUM_PIXELS // 2):
+            pixels[i] = dim_white
+        pixels.show()
+        time.sleep(delay)
+
+def move_light_effect(delay=0.02, ring=1):
     white = (127, 127, 127)  # Warm white color at 50% intensity
     dim_white = (10, 10, 10)  # Warm white color at 50% intensity
 
-    # Turn off all pixels
-    pixels.fill(dim_white)
+    # Turn off all pixels in the ring
+    start_index = (ring - 1) * NUM_PIXELS // 2
+    for i in range(start_index, start_index + NUM_PIXELS // 2):
+        pixels[i] = dim_white
     pixels.show()
-    
+
     # Sequence to light up two LEDs radially opposite each other
-    for i in range(NUM_PIXELS // 2):
-        opposite_index = i + NUM_PIXELS // 2
-        
-        pixels[i] = white  
-        pixels[opposite_index] = white 
-        
+    for i in range(NUM_PIXELS // 4):
+        opposite_index = i + NUM_PIXELS // 4
+
+        pixels[start_index + i] = white
+        pixels[start_index + opposite_index] = white
+
         pixels.show()
         time.sleep(delay)
-        
-        pixels[i] = dim_white
-        pixels[opposite_index] = dim_white
-    
+
+        pixels[start_index + i] = dim_white
+        pixels[start_index + opposite_index] = dim_white
+
     # Ensure all LEDs are off before exiting the function
     pixels.show()
 
-def tag_read_light_effect():
-    move_light_effect()
+def tag_read_light_effect(ring=1):
+    move_light_effect(ring=ring)
 
-def breathing_light_effect(delay=0.02, steps=100):
-    breath_depth = 30  # Maximum brightness level
-    while True:
-        for step in range(steps + 1):
-            intensity = int(breath_depth * step / steps)
-            dim_color = (intensity, int(.1*intensity), int(.1*intensity))
-            pixels.fill(dim_color)
-            pixels.show()
-            time.sleep(delay)
-        for step in range(steps + 1):
-            intensity = int(breath_depth * (steps - step) / steps)
-            dim_color = (intensity, int(.1*intensity), int(.1*intensity))
-            pixels.fill(dim_color)
-            pixels.show()
-            time.sleep(delay)
+class BreathingEffect(threading.Thread):
+    def __init__(self, delay=0.02, steps=50, ring=1):
+        super().__init__()
+        self.delay = delay
+        self.steps = steps
+        self.ring = ring
+        self.breath_depth = 30  # Maximum brightness level
+        self.stop_event = threading.Event()
+        self.daemon = True
 
-# Start breathing light effect in a separate thread
-breathing_thread = threading.Thread(target=breathing_light_effect)
-breathing_thread.daemon = True
-breathing_thread.start()
+    def run(self):
+        while not self.stop_event.is_set():
+            for step in range(self.steps + 1):
+                if self.stop_event.is_set():
+                    break
+                intensity = int(self.breath_depth * step / self.steps)
+                dim_color = (intensity, int(.1*intensity), int(.1*intensity))
+                start_index = (self.ring - 1) * NUM_PIXELS // 2
+                for i in range(start_index, start_index + NUM_PIXELS // 2, 1):  # Use every other LED
+                    pixels[i] = dim_color
+                pixels.show()
+                time.sleep(self.delay)
+            for step in range(self.steps + 1):
+                if self.stop_event.is_set():
+                    break
+                intensity = int(self.breath_depth * (self.steps - step) / self.steps)
+                dim_color = (intensity, int(.1*intensity), int(.1*intensity))
+                start_index = (self.ring - 1) * NUM_PIXELS // 2
+                for i in range(start_index, start_index + NUM_PIXELS // 2, 1):  # Use every other LED
+                    pixels[i] = dim_color
+                pixels.show()
+                time.sleep(self.delay)
+
+    def stop(self):
+        self.stop_event.set()
+        self.join()
+
+# Start breathing light effect in a separate thread for each ring
+breathing_effect = BreathingEffect(delay=0.01, steps=15, ring=1)
+breathing_effect.start()
+
+# Function to send OSC message with error handling
+def send_osc_message(address, value):
+    try:
+        client.send_message(address, value)
+    except Exception as e:
+        print(f"Error sending OSC message to {address}: {e}")
 
 # Main loop
 while True:
+    start_time = time.time()
     uid = pn532.read_passive_target(timeout=0.5)
     if uid is not None:
         tag_key = detect_tag(uid)
@@ -121,23 +189,34 @@ while True:
             print(f"Tag {tag_key} detected. {rfid_tags[tag_key]['message']}")
             if tag_key == 1 or tag_key == 3:  # Blue tag 1
                 print("sent tag ", tag_key)
-                client.send_message("/4/multitoggle/2/1", 1.0)  # increase intensity
+                send_osc_message("/4/multitoggle/2/1", 1.0)  # increase intensity
             elif tag_key == 2 or tag_key == 4:  # Blue tag 2
-                client.send_message("/4/multitoggle/2/2", 1.0)  # decrease intensity
+                send_osc_message("/4/multitoggle/2/2", 1.0)  # decrease intensity
             elif tag_key == 6 or tag_key == 7:
                 print("crickets")
-                client.send_message("/4/multitoggle/2/3", 1.0)  # crickets
+                send_osc_message("/4/multitoggle/2/3", 1.0)  # crickets
             elif tag_key == 5:
                 print("mario")
-                client.send_message("/4/multitoggle/2/7", 1.0)  # mario
-            fadein_light_effect()
-            tag_read_light_effect()
-            move_light_effect()
-            fadeout_light_effect()
+                send_osc_message("/4/multitoggle/2/7", 1.0)  # mario
+
+            # Stop the breathing effect
+            breathing_effect.stop()
+
+            # Run other light effects
+            shine_light_effect(ring=1)
+            tag_read_light_effect(ring=1)
+            move_light_effect(ring=1)
+            fadeout_light_effect(ring=1)
+
+            # Restart the breathing effect
+            breathing_effect = BreathingEffect(delay=0.01, steps=15, ring=1)
+            breathing_effect.start()
         else:
             print(f"Unknown tag detected with UID: {uid}")
             uid_hex = " ".join(format(x, '02x') for x in uid)
             print(f"Tag UID: {[hex(byte) for byte in uid]}".replace("'", ""))  # print(f"Tag UID: {uid_hex}")
-            client.send_message("/4/multitoggle/2/8", 1.0)  # error
-            fadeout_light_effect()
+            send_osc_message("/4/multitoggle/2/8", 1.0)  # error
+            fadeout_light_effect(ring=1)
+    end_time = time.time()
+    print(f"Main loop duration: {end_time - start_time} seconds")
     time.sleep(0.1)
