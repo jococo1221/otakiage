@@ -1,15 +1,21 @@
 import pygame
+import os
+import random
 
 # Initialize Pygame mixer
+
+pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
+pygame.init()
 pygame.mixer.init()
 
 #-----LIGHTS
 
-
+ack=0
 #ip_address="192.168.2.23"
 #ip_address="192.168.238.45"
-max_value=68
-min_value=1
+#max_value=68 #Incandescent=78 (less than 88. Afer a certain threshold it bugs and need to rebooot). LED bulbs=68
+max_value=70 #70 is the actual zero value that the i2c bus can take
+min_value=0 #0 is the max intensity on the i2c bus
 initial_intensity=5
 
 target_intensity=initial_intensity
@@ -122,10 +128,21 @@ duration = 0.1  # Duration of each audio frame in seconds
 sample_rate = 44100  # Change this to a supported sample rate
 blocksize = 16*1024 #1024  # Buffer size
 
+# Dictionary to keep track of currently playing sounds
+playing_sounds = {}
+
 def play_sound(file_path, volume=1.0):
+    # Load the sound
     sound = pygame.mixer.Sound(file_path)
+    # Set the volume
     sound.set_volume(volume)
-    sound.play()
+    
+    # Check if the sound is already playing
+    if file_path in playing_sounds and playing_sounds[file_path].get_busy():
+        return
+    
+    # Play the sound and store the channel in the dictionary
+    playing_sounds[file_path] = sound.play()
 
 # Function to play a sound in a new thread
 def play_sound_in_thread(file_path, volume=1.0):
@@ -146,9 +163,11 @@ def check_audio_transient():
     global mic_influence_percentage
     global volume_transient 
     #DEBUG only output the volume when there's a 10% change
-    if volume_percentage > volume_percentage_last_measure*1.05:
+    if volume_percentage > volume_percentage_last_measure*1.15: #was 1.05
     #if True:
-        print(f"Volume: {int(volume_percentage/1)}, Mic influence: {int(mic_influence_percentage)}")
+        #print(f"Volume: {int(volume_percentage/1)}, Mic influence: {int(mic_influence_percentage)}")
+        print('.', end='', flush=True)
+        status_report()
         volume_transient=True
     else:
         volume_transient=False    
@@ -240,8 +259,9 @@ def audio_processing():
 
 
 #----
-def status_report():
-    print("/1/fader5-", "Fader blue", ", target_intensity:", target_intensity)
+def status_report():    
+    pass
+    #print("/1/fader5-", "Fader blue", ", target_intensity:", target_intensity)
     # print("/1/fader1-", "Fader 1", ", mic_influence_percentage: ", mic_influence_percentage)
     # print("/1/fader2-", "Fader 2", ", variability_range: ", variability_range)
     # print("/1/fader3-", "Fader 3", ", snap_range: ", snap_range)
@@ -378,18 +398,60 @@ def osc_set_multitoggle(address, *args):
         b_mario()
     if address=="/4/multitoggle/2/8":
         b_error()
+    if address=="/4/multitoggle/3/1":
+        b_oraculo()
+        ip1=target_value #flare of light 1
+    if address=="/4/multitoggle/3/2":
+        b_birds()
+    if address=="/4/multitoggle/3/3":
+        b_darya()
 
         #print(address)    
     #print(f"{address}: {args}")
     
     #if (address + )== "/4/multitoggle/1/1: (1.0,)"
 
+def b_darya():
+        print("playing")
+        play_sound("/home/pi/otakiage/audio/daryam.mp3", .5)
+        intensity_step(.1)
+
+def b_birds():
+        play_sound("/home/pi/otakiage/audio/birds.mp3", .5)
+        intensity_step(.1)
+
+def b_oraculo():
+    
+    play_sound_in_thread("/home/pi/otakiage/crickets_fd.wav", .5)
+    
+    folder_path = "/home/pi/otakiage/audio/oraculo"
+    files = os.listdir(folder_path)
+    
+    # Filter the list to only include files with the desired extension, e.g., .mp3
+    audio_files = [file for file in files if file.lower().endswith('.mp3')]
+    
+    if audio_files:
+        # Select a random file from the list of audio files
+        random_file = random.choice(audio_files)
+        
+        # Create the full path to the selected file
+        random_file_path = os.path.join(folder_path, random_file)
+        
+        print("audio file:", random_file_path)
+        # Call the play_sound_in_thread function with the random file
+        play_sound_in_thread(random_file_path, .5)
+    else:
+        print("No audio files found in the folder.")
+
+
 def b_increase_fire():
         print('up')
+        acknowledgement(1)
         intensity_step(.1)
 
 def b_decrease_fire():
         print('down')
+        acknowledgement(2)
         intensity_step(-.1)
         # play_sound_in_thread("./fire_down_fd.wav", .2)
 
@@ -400,27 +462,38 @@ def b_mario():
         play_sound_in_thread("/home/pi/otakiage/mario_jump.mp3", .1)
 
 def b_warning():
-        play_sound_in_thread("/home/pi/otakiage/drop.wav", .1)
+        play_sound_in_thread("/home/pi/otakiage/drop.wav", .4)
 
 def b_error():
-        play_sound_in_thread("/home/pi/otakiage/drop.wav", .1)
+        play_sound_in_thread("/home/pi/otakiage/drop.wav", .4)
         time.sleep(.2)
-        play_sound_in_thread("/home/pi/otakiage/drop.wav", .1)
+        play_sound_in_thread("/home/pi/otakiage/drop.wav", .4)
+
+def acknowledgement(ack_type):
+    global ack
+
+    if ack_type==1:
+        ack=1 #flare up
+
+    if ack_type==2:
+        ack=2 #flare down   
 
 def intensity_step(delta):
     global target_intensity
     global min_value
     global max_value
+    under_zero_margin=40 # allow the minimum value to go under zero
 
     proposed_value=target_intensity + delta*max_value
 
-    if ((proposed_value <= max_value) and (proposed_value >= min_value)):
+    if ((proposed_value <= max_value) and (proposed_value >= min_value-under_zero_margin)):
             target_intensity = proposed_value
             if delta <0: play_sound_in_thread("/home/pi/otakiage/fire_down_fd.wav", .2)
-            if delta >0: play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", .2)
+            if delta >0: play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", .4)
     else: b_warning()
 
-
+    # if (proposed_value <= min_value):
+    #     target_intensity=min_value-10
 
 
 
@@ -430,7 +503,7 @@ def osc_set_intensity(unused_addr, args, parameter):
     global min_value
     global max_value
     target_intensity=parameter*max_value
-    print("target_intensity: ", target_intensity)
+    #print("target_intensity: ", target_intensity)
   #print("El doble del fader es:", 2*parameter)
 
 def osc_set_vivacity(unused_addr, args, parameter):
@@ -503,6 +576,8 @@ async def loop():
     global ip7
     global ip8  
     
+    global ack
+    
     volume_percentage_last_measure=0
     
     # Startup info
@@ -533,6 +608,15 @@ async def loop():
         # fader adds
         audio_factor_add=( 1 + 2*((mic_influence_percentage/100)*(volume_percentage/100)*2))
         audio_factor=audio_factor_add
+        
+        if ack==1:
+            ip1=(1*ip1+2*max_value)/3 #weighted average
+            ack=0
+
+        if ack==2:
+            ip1=min_value
+            ack=0
+
         
         ip1=randomize_intensity(ip1, audio_factor)
         ip1=animate_intensity(ip1, ip1, audio_factor)
