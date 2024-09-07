@@ -27,18 +27,6 @@ max_retries = 5
 retry_delay = 5
 client = None
 
-for attempt in range(max_retries):
-    try:
-        client = udp_client.SimpleUDPClient(args["ip"], args["port"])
-        # Test connection
-        client.send_message("/test", 1.0)
-        print(f"Connected to OSC server on {args['ip']}:{args['port']}")
-        break
-    except (socket.gaierror, ConnectionRefusedError):
-        print(f"Failed to connect to OSC server. Retrying in {retry_delay} seconds...")
-        time.sleep(retry_delay)
-else:
-    print("Could not connect to OSC server. Continuing without OSC server.")
 
 # Define GPIO pin for the NeoPixel data line
 PIXEL_PIN = board.D18  # Assuming data line is connected to GPIO 18
@@ -133,16 +121,33 @@ def fadein_light_effect(delay=0.02, steps=10, ring=1):
         pixels.show()
         time.sleep(delay)
 
-def fadeout_light_effect(delay=0.02, steps=10, ring=1):
+def fadeout_light_effect(delay=0.02, steps=10, ring=1, color=(1, 1, 1)):
     max_brightness = 10  # Maximum brightness level
     start_index = (ring - 1) * NUM_PIXELS // 2
+
+    # Ensure the color values are normalized to 0-1 range
+    r, g, b = color
+
     for step in range(steps + 1):
-        intensity = int(max_brightness * (steps - step) / steps)
-        dim_white = (intensity, intensity, intensity)
+        intensity = (max_brightness * (steps - step) / steps)
+        colored_intensity = (int(r * intensity), int(g * intensity), int(b * intensity))
         for i in range(start_index, start_index + NUM_PIXELS // 2):
-            pixels[i] = dim_white
+            pixels[i] = colored_intensity
         pixels.show()
         time.sleep(delay)
+
+def le_set(color=(1, 1, 1)):
+    ring=1
+    max_brightness = 10  # Maximum brightness level
+    intensity = max_brightness
+    start_index = (ring - 1) * NUM_PIXELS // 2
+    # Ensure the color values are normalized to 0-1 range
+    r, g, b = color
+    colored_intensity = (int(r * intensity), int(g * intensity), int(b * intensity))
+    for i in range(start_index, start_index + NUM_PIXELS // 2):
+        pixels[i] = colored_intensity
+    pixels.show()
+
 
 def move_light_effect(delay=0.02, ring=1):
     white = (127, 127, 127)  # Warm white color at 50% intensity
@@ -223,6 +228,10 @@ def f_error():
     time.sleep(0.2)
     play_sound_in_thread("/home/pi/otakiage/drop.wav", 0.7)
 
+def f_silent_error():
+    fadeout_light_effect(color=(.2,.2,1))
+
+
 #a_ ACTIONS
 
 def a_pulse_intensity(p_factor):    
@@ -250,6 +259,28 @@ def a_pulse_intensity(p_factor):
     
     print("pulse intensity x ", p_factor," = ", pulse_intensity)    
 
+
+#MAIN PROGRAM
+
+#set blue color while trying to connect
+le_set(color=(0,0,.5))
+
+for attempt in range(max_retries):
+    try:
+        client = udp_client.SimpleUDPClient(args["ip"], args["port"])
+        # Test connection
+        client.send_message("/test", 1.0)
+        print(f"Connected to OSC server on {args['ip']}:{args['port']}")
+        break
+    except (socket.gaierror, ConnectionRefusedError):
+        print(f"Failed to connect to OSC server. Retrying in {retry_delay} seconds...")
+        f_silent_error()
+        le_set(color=(0,0,.5))
+        time.sleep(retry_delay)
+else:
+    print("Could not connect to OSC server. Continuing without OSC server.")
+
+
 # Start breathing light effect in a separate thread for each ring
 breathing_effect = BreathingEffect(delay=0.01, steps=15, ring=1)
 breathing_effect.start()
@@ -260,6 +291,7 @@ def send_osc_message(address, value):
         client.send_message(address, value)
     except Exception as e:
         print(f"Error sending OSC message to {address}: {e}")
+        f_silent_error()
 
 # Main loop
 
