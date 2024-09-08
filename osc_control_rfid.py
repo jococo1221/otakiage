@@ -6,6 +6,7 @@ from adafruit_pn532.i2c import PN532_I2C
 from pythonosc import udp_client, osc_message_builder
 import neopixel
 import socket
+import random
 
 import pygame
 pygame.mixer.init()
@@ -69,6 +70,7 @@ rfid_tags = {
     20: {"uid": [0x04, 0x87, 0x71, 0x4e, 0x6f, 0x61, 0x80], "message": "Agua"},
     21: {"uid": [0x04, 0xa1, 0x57, 0xc6, 0x79, 0x00, 0x00], "message": "Black clock 1"},
     22: {"uid": [0x04, 0xa0, 0x57, 0xc6, 0x79, 0x00, 0x00], "message": "Black clock 2"},  
+    23: {"uid": [0x04, 0x9e, 0x57, 0xc6, 0x79, 0x00, 0x00], "message": "Small step"},
     # : {"uid": , "message": ""},
     # : {"uid": , "message": ""},
     # : {"uid": , "message": ""},
@@ -178,45 +180,85 @@ def move_light_effect(delay=0.02, ring=1):
 def tag_read_light_effect(ring=1):
     move_light_effect(ring=ring)
 
-class BreathingEffect(threading.Thread):
+
+
+class PulseEffect(threading.Thread):
     global pulse_intensity
-    #max_brightness = 10*pulse_intensity  # Maximum brightness level
-    
-    def __init__(self, delay=0.02, steps=50, ring=1):
+
+    def __init__(self, steps=50, ring=1):
         super().__init__()
-        self.delay = delay
-        self.steps = steps
+        self.steps = steps * 6  # Adjusted for breathing effect
         self.ring = ring
-        self.breath_depth = 30*pulse_intensity  # Maximum brightness level
+        self.breath_depth = 30 * pulse_intensity  # Maximum brightness level
         self.stop_event = threading.Event()
         self.daemon = True
 
+        self.current_intensity = [0] * NUM_PIXELS
+        self.gamma = 2.0
+
     def run(self):
+        """Main thread loop, runs the breathing effect."""
         while not self.stop_event.is_set():
-            for step in range(self.steps + 1):
-                if self.stop_event.is_set():
-                    break
-                intensity = int(self.breath_depth * step / self.steps)
-                dim_color = (intensity, int(.1*intensity), int(.1*intensity))
-                start_index = (self.ring - 1) * NUM_PIXELS // 2
-                for i in range(start_index, start_index + NUM_PIXELS // 2, 1):  # Use every other LED
-                    pixels[i] = dim_color
-                pixels.show()
-                time.sleep(self.delay)
-            for step in range(self.steps + 1):
-                if self.stop_event.is_set():
-                    break
-                intensity = int(self.breath_depth * (self.steps - step) / self.steps)
-                dim_color = (intensity, int(.1*intensity), int(.1*intensity))
-                start_index = (self.ring - 1) * NUM_PIXELS // 2
-                for i in range(start_index, start_index + NUM_PIXELS // 2, 1):  # Use every other LED
-                    pixels[i] = dim_color
-                pixels.show()
-                time.sleep(self.delay)
+            self.breathing_effect()
+
+    def breathing_effect(self):
+        """Implements a smooth breathing effect with gamma correction."""
+        start_index = (self.ring - 1) * NUM_PIXELS // 2
+        leds_to_update = NUM_PIXELS // 2  # Total number of LEDs in the ring
+
+        cycle_duration = 2.0  # Duration for full brighten and dim cycle (seconds)
+        step_duration = cycle_duration / (2 * self.steps)
+
+        # Brighten
+        for step in range(self.steps + 1):
+            if self.stop_event.is_set():
+                break
+            target_intensity = int(self.breath_depth * step / self.steps)
+            target_color = self.apply_gamma_correction(target_intensity)
+            self.update_leds_weighted(target_intensity, target_color, start_index, leds_to_update)
+            time.sleep(step_duration)
+
+        # Dim
+        for step in range(self.steps + 1):
+            if self.stop_event.is_set():
+                break
+            target_intensity = int(self.breath_depth * (self.steps - step) / self.steps)
+            target_color = self.apply_gamma_correction(target_intensity)
+            self.update_leds_weighted(target_intensity, target_color, start_index, leds_to_update)
+            time.sleep(step_duration)
+
+    def apply_gamma_correction(self, intensity):
+        """Applies gamma correction to smooth transitions."""
+        adjusted_intensity = int((intensity / self.breath_depth) ** self.gamma * self.breath_depth)
+        return self.cap_color_values(adjusted_intensity)
+
+    def cap_color_values(self, value):
+        """Cap color values to the range [0, 255]."""
+        capped_value = min(max(0, value), 255)
+        return (capped_value, int(0.1 * capped_value), int(0.1 * capped_value))
+
+    def update_leds_weighted(self, target_intensity, target_color, start_index, leds_to_update):
+        """Update LEDs based on the intensity differences."""
+        gaps = [abs(target_intensity - self.current_intensity[i]) for i in range(start_index, start_index + leds_to_update)]
+        total_gap = sum(gaps)
+
+        if total_gap > 0:
+            probabilities = [gap / total_gap for gap in gaps]
+            num_leds_to_update = random.randint(6, leds_to_update) if target_intensity < 5 else random.randint(3, 6)
+            selected_leds = random.choices(range(len(gaps)), probabilities, k=num_leds_to_update)
+
+            for led_index in selected_leds:
+                pixel_index = start_index + led_index
+                pixels[pixel_index] = target_color
+                self.current_intensity[pixel_index] = target_intensity
+
+            pixels.show()
 
     def stop(self):
+        """Stops the thread."""
         self.stop_event.set()
         self.join()
+
 
 #f_ FEEDBACK
 
@@ -236,8 +278,8 @@ def f_silent_error():
 
 def a_pulse_intensity(p_factor):    
     global pulse_intensity
-    max_pi=8
-    min_pi=.05
+    max_pi=50
+    min_pi=.1
     if(pulse_intensity<min_pi):
         #deal with zero value
         pulse_intensity=min_pi*p_factor
@@ -271,6 +313,10 @@ for attempt in range(max_retries):
         # Test connection
         client.send_message("/test", 1.0)
         print(f"Connected to OSC server on {args['ip']}:{args['port']}")
+
+        #Connected - set black color
+        le_set(color=(0,0,0))
+
         break
     except (socket.gaierror, ConnectionRefusedError):
         print(f"Failed to connect to OSC server. Retrying in {retry_delay} seconds...")
@@ -282,7 +328,7 @@ else:
 
 
 # Start breathing light effect in a separate thread for each ring
-breathing_effect = BreathingEffect(delay=0.01, steps=15, ring=1)
+breathing_effect = PulseEffect(steps=15, ring=1)
 breathing_effect.start()
 
 # Function to send OSC message with error handling
@@ -314,6 +360,8 @@ while True:
                 a_pulse_intensity(1/2)
             elif tag_key == 22:  # Clock 2
                 a_pulse_intensity(2)
+            elif tag_key == 23:  #
+                a_pulse_intensity(.9)
             elif tag_key == 6 :
                 print("Darya")
                 send_osc_message("/4/multitoggle/3/3", 1.0)
@@ -349,7 +397,7 @@ while True:
             fadeout_light_effect(ring=1)
 
             # Restart the breathing effect
-            breathing_effect = BreathingEffect(delay=0.01, steps=15, ring=1)
+            breathing_effect = PulseEffect(steps=15, ring=1)
             breathing_effect.start()
         else:
             uid_hex = " ".join(format(x, '02x') for x in uid)
