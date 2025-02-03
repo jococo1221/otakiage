@@ -1,10 +1,17 @@
+import adafruit_pixelbuf
+import board
+import neopixel_spi as neopixel
+
+
 import time
 import threading
-import board
+#import board
 import busio
+#from adafruit_pn532.i2c import PN532_I2C
+#from Adafruit_PN532.i2c import PN532_I2C
 from adafruit_pn532.i2c import PN532_I2C
 from pythonosc import udp_client, osc_message_builder
-import neopixel
+#import neopixel
 from rpi_ws281x import PixelStrip, Color
 import socket
 import subprocess
@@ -35,23 +42,31 @@ retry_delay = 5
 client = None
 
 
-# LED configuration for SPI-based NeoPixel control
-LED_COUNT = 48           # Number of LED pixels (24 per ring, 2 rings)
-LED_PIN = 10             # GPIO pin for SPI MOSI (must be GPIO 10 for SPI)
-LED_FREQ_HZ = 800000     # LED signal frequency in hertz (800kHz typical)
-LED_DMA = 10             # DMA channel to use for generating signal
-LED_BRIGHTNESS = 128     # Brightness of LEDs (0-255)
-LED_CHANNEL = 0          # Channel not used for SPI
-NUM_PIXELS = 48
+import board
+import neopixel_spi as neopixel
 
-# Initialize NeoPixel strip using SPI
-pixels = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, False, LED_BRIGHTNESS, LED_CHANNEL)
-pixels.begin()  # Initialize the strip
+# LED Configuration for SPI-based NeoPixel control
+NUM_PIXELS = 48  # Number of LED pixels (24 per ring, 2 rings)
+LED_BRIGHTNESS = 128     # Brightness of LEDs (0-255)
+SPI_BUS = board.SPI()  # Initialize SPI bus
+
+pixels = neopixel.NeoPixel_SPI(
+    SPI_BUS,
+    NUM_PIXELS,
+    brightness=LED_BRIGHTNESS / 255,  # Convert 0-255 to 0.0-1.0 scale
+    pixel_order=neopixel.GRB,  # Adjust if needed (GRB, RGB, etc.)
+    auto_write=False  # Prevents auto-refresh, use pixels.show() instead
+)
+
 
 # Helper function to set a pixel color
 def set_pixel(index, color):
     r, g, b = color
-    pixels.setPixelColor(index, Color(int(r), int(g), int(b)))
+    #pixels.setPixelColor(index, Color(int(r), int(g), int(b)))
+    #show pixels
+    pixels[index] = Color(int(r), int(g), int(b))
+    #pixels.fill(Color(int(r), int(g), int(b)))
+
 
 def show_pixels():
     pixels.show()
@@ -95,7 +110,7 @@ def detect_tag(uid):
     return None
 
 # LED animation functions
-def shine_light_effect(delay=0.01, steps=5, ring=1):
+def shine_light_effect(delay=0.03, steps=5, ring=1):
     max_brightness = 220  # Maximum brightness level
     start_index = (ring - 1) * NUM_PIXELS // 2
     for step in range(steps + 1):
@@ -116,7 +131,7 @@ def shine_light_effect(delay=0.01, steps=5, ring=1):
         show_pixels()
         time.sleep(delay)
 
-def fadein_light_effect(delay=0.02, steps=10, ring=1):
+def fadein_light_effect(delay=0.06, steps=10, ring=1):
     max_brightness = pulse_intensity  # Maximum brightness level
     start_index = (ring - 1) * NUM_PIXELS // 2
     for step in range(steps + 1):
@@ -128,7 +143,7 @@ def fadein_light_effect(delay=0.02, steps=10, ring=1):
         show_pixels()
         time.sleep(delay)
 
-def fadeout_light_effect(delay=0.02, steps=10, ring=1, color=(1, 1, 1)):
+def fadeout_light_effect(delay=0.06, steps=10, ring=1, color=(1, 1, 1)):
     max_brightness = 10  # Maximum brightness level
     start_index = (ring - 1) * NUM_PIXELS // 2
 
@@ -159,7 +174,7 @@ def le_set(color=(1, 1, 1)):
 
 
 def move_light_effect(delay=0.02, ring=1):
-    white = (127, 127, 127)  # Warm white color at 50% intensity
+    white = (150, 127, 127)  # Warm white color at 50% intensity
     dim_white = (10, 10, 10)  # Warm white color at 50% intensity
 
     # Turn off all pixels in the ring

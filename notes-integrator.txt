@@ -2,3 +2,22 @@
 
 # this made the LEDs work on SPI, with much better performance than the PWM version
 echo 850000 | sudo tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+
+
+# New installation Raspberry Pi 5
+Otakiage - after fresh install:
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install pip
+
+#create virtual environment
+
+python3 -m venv ~/reflections_env
+source ~/reflections_env/bin/activate
+pip install -r requirements.txt 
+
+#enable SPI/I2C under interface options and reboot
+sudo raspi-config
+sudo apt install i2c-tools
+
+#...after here it was a lot about finding a way to make dependencies work...

@@ -1,4 +1,7 @@
 
+-- Virtual environment
+source ~/reflections_env/bin/activate
+
 
 -- run with logs (saved on home/logs directory)
 /usr/bin/python /home/pi/otakiage/fire_osc.py > ~/logs/no_errors.txt 2> ~/logs/errors.txt &
