@@ -1,0 +1,18 @@
+
+[Unit]
+Description=Start RFID SPI Script
+After=multi-user.target bluetooth.service pulseaudio.service
+Requires=bluetooth.service pulseaudio.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/otakiage/osc_control_rfid_spi.py
+User=pi
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+#Environment=XDG_RUNTIME_DIR=/var/run/pulse
+Restart=always
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
