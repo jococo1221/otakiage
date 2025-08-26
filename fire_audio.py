@@ -94,7 +94,10 @@ ip7=target_intensity
 ip8=target_intensity
 
 volume_percentage = 0
+volume_fuel = 0 # the "volume fuel" will increase slowly at each iteration. When it hits 1.0, it will make volume_transient True and trigger an action (flare)
+volume_fuel_leak = 0.001 # the rate at which volume fuel leaks over time, that will be added on each cycle to volume_fuel, and trigger the volume_transient when volume_fuel = 1.
 volume_transient = False
+
 # ip1=target_intensity
 # ip2=target_intensity
 # ip3=target_intensity
@@ -163,22 +166,51 @@ def get_sample_rate():
     return sample_rate
 
 def check_audio_transient():
+
     global volume_percentage
     global volume_percentage_last_measure
     global mic_influence_percentage
     global volume_transient 
-    #DEBUG only output the volume when there's a 10% change
-    if volume_percentage > volume_percentage_last_measure*1.15: #was 1.05
-    #if True:
-        #print(f"Volume: {int(volume_percentage/1)}, Mic influence: {int(mic_influence_percentage)}")
-        print('.', end='', flush=True)
-        status_report()
-        volume_transient=True
-    else:
-        volume_transient=False    
-    volume_percentage_last_measure=volume_percentage
+    global volume_fuel
+    global volume_fuel_leak
 
-def estimate_volume(data):
+    old_approach=False
+
+    # volume fuel increases with steady leak, and vents with sound. If there's silence for long, it ignites and calls back to presence
+    volume_fuel = volume_fuel + volume_fuel_leak - 40*volume_percentage/100 # - .001*(mic_influence_percentage/100)
+    # if volume_percentage_last_measure is different than volume_percentage
+    # Print volume_fuel, volume_fuel_leak and mic_influence_percentage/100 
+
+    if True:
+        print(f"Volume fuel: {volume_fuel}, Volume fuel leak: {volume_fuel_leak}, Volume_percentage/1000: {mic_influence_percentage/100}")
+
+    if volume_fuel < 0:
+        volume_fuel = 0
+
+    if volume_fuel >= 1.0:
+        volume_fuel = 1.0
+        volume_transient = True
+        print("Volume transient")
+        # Show acknowledgement animation at 1
+        acknowledgement(1) #flare up
+        #reset parameters 
+        volume_fuel = 0
+        volume_transient= False
+        # I think I can use the OSC controller for volume_percentage. For now just output to console
+        print(f"Volume percentage on trigger: {volume_percentage}")
+
+    #this triggers the old approach of flare when there's a 15% volume transient
+    if old_approach:
+        if volume_percentage > volume_percentage_last_measure*1.15: #was 1.05
+            #print(f"Volume: {int(volume_percentage/1)}, Mic influence: {int(mic_influence_percentage)}")
+            print('.', end='', flush=True)
+            status_report()
+            volume_transient=True
+        else:
+            volume_transient=False    
+        volume_percentage_last_measure=volume_percentage
+
+def estimate_normal_volume(data):
     # Compute root mean square (RMS) of the audio signal
     rms = np.sqrt(np.mean(data**2))
     # Convert RMS to dB
@@ -234,11 +266,13 @@ def audio_processing():
         # Capture audio input
         data = sd.rec(int(sample_rate * duration), samplerate=sample_rate, channels=1, blocking=True)
         # Estimate volume level
-        volume = estimate_bass_volume(data.flatten())
+        volume = estimate_normal_volume(data.flatten())
+        #volume = estimate_bass_volume(data.flatten())
         # print(volume)
-        volume_percentage = int(volume)
+        volume_percentage = int(volume*100)
         # Adjust LED intensity based on volume level
-        # Your LED control logic here
+        # Your LED control logic here        volume = estimate_bass_volume(data.flatten())
+
         time.sleep(0.01)  # Sleep to avoid high CPU usage
 
 # def main():
@@ -454,7 +488,7 @@ def b_next_light():
 def run_scene(scene):
     if scene == 1:
         # hue warm light
-        modify_group_state(7, True, 2700, 50, 254, 10)
+        modify_group_state(7, True, 2500, 50, 60, 10)
         #modify_group_state(7, True, 0, 254, 10)
         time.sleep(2)
     elif scene == 2:
