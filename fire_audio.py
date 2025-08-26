@@ -1,12 +1,17 @@
 import pygame
 import os
 import random
+from light_manager import *
 
 # Initialize Pygame mixer
 
 pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
 pygame.init()
 pygame.mixer.init()
+
+#-----Scenes
+scene=1
+
 
 #-----LIGHTS
 
@@ -405,11 +410,70 @@ def osc_set_multitoggle(address, *args):
         b_birds()
     if address=="/4/multitoggle/3/3":
         b_darya()
+    if address=="/4/multitoggle/4/1":
+        b_prev_light()
+    if address=="/4/multitoggle/4/2":
+        b_next_light()
+    if address=="/4/multitoggle/4/3":
+        b_initial_light()
+    if address=="/4/multitoggle/5/1":
+        b_wish()
+
+
 
         #print(address)    
     #print(f"{address}: {args}")
     
     #if (address + )== "/4/multitoggle/1/1: (1.0,)"
+
+def b_initial_light():
+    global scene
+    print("light one")
+    scene = 1
+    print("Current scene", scene)
+    run_scene(scene)
+
+
+def b_prev_light():
+    global scene
+    print("prev light")
+    scene = scene - 1
+    # verify that scene number is still valid
+    if scene <=1:
+        scene = 1
+    print("Current scene", scene)
+    run_scene(scene)
+
+def b_next_light():
+    global scene
+    print("next light")
+    scene = scene + 1
+    print("Current scene", scene)
+    run_scene(scene)
+
+def run_scene(scene):
+    if scene == 1:
+        # hue warm light
+        modify_group_state(7, True, 2700, 50, 254, 10)
+        #modify_group_state(7, True, 0, 254, 10)
+        time.sleep(2)
+    elif scene == 2:
+        modify_group_state(7, True, 30500, 254, 254, 50) #turquoise
+        time.sleep(5)
+    elif scene == 3:
+        modify_group_state(7, True, 0, 254, 254, 10) #deep red
+        #modify_group_state(7, True, 8402, 254, 254, 50)
+        time.sleep(5)
+    elif scene == 4:
+        modify_group_state(7, False, 0, 254, 254, 10)
+        time.sleep(2)
+    elif scene == 5:
+        scene = 1
+
+
+def b_wish():
+    print("wish")
+    acknowledgement(1) #flare up
 
 def b_darya():
         print("playing")
