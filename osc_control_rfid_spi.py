@@ -16,6 +16,11 @@ from rfid_tags import rfid_tags
 
 import pygame
 
+#external osc_safe.py
+from osc_safe import OSCSafeClient
+osc = OSCSafeClient(host="shine.local", port=5006, refresh_sec=0)  # set to IP for max reliability
+osc.start()
+
 # Initialize global variables
 previous_tag_key = 0
 
@@ -92,10 +97,12 @@ def play_sound_in_thread(file_path, volume=1.0):
 
 # Function to detect RFID tag
 def detect_tag(uid):
+    # Check if the UID matches any known tags
     for tag_key, tag_data in rfid_tags.items():
         if uid == bytearray(tag_data["uid"]):
             return tag_key
-    return None
+    # If no match is found, return 999
+    return 999
 
 # LED animation functions
 def shine_light_effect(delay=0.01, steps=5, ring=1):
@@ -145,7 +152,7 @@ def fadeout_light_effect(delay=0.02, steps=10, ring=1, color=(1, 1, 1)):
             #pixels[i] = colored_intensity
             set_pixel(i, colored_intensity)
         show_pixels()
-        time.sleep(delay)
+        time.sleep(delay/2)
 
 def le_set(color=(1, 1, 1)):
     ring=1
@@ -347,11 +354,17 @@ breathing_effect_running = True
 
 # Function to send OSC message with error handling
 def send_osc_message(address, value):
-    try:
-        client.send_message(address, value)
-    except Exception as e:
-        print(f"Error sending OSC message to {address}: {e}")
+
+    ok = osc.send(address, value)
+    if not ok:
         f_silent_error()
+
+    # # Previous approach
+    # try:
+    #     client.send_message(address, value)
+    # except Exception as e:
+    #     print(f"Error sending OSC message to {address}: {e}")
+    #     f_silent_error()
 
 debounce=0.1 # default debounce
 
@@ -359,94 +372,114 @@ debounce=0.1 # default debounce
 while True:
     tag_key = None
     start_time = time.time()
+    uid = None
     uid = pn532.read_passive_target(timeout=0.5)
+    # default color is white
+    light_color = (0.5, 0.5, 0.5)
     if uid is not None:
         tag_key = detect_tag(uid)
         print(".", end="", flush=True)
 
-    if previous_tag_key != tag_key and tag_key is not None:  # new tag detected, for tags that are "one time use" (not cumulative)
-        tag_message = rfid_tags.get(tag_key, {}).get("message", "Unknown tag")
-        print(f"Tag {tag_key} detected. {tag_message}. Previous tag: {previous_tag_key}")
-        if tag_key == 1 or tag_key == 3 or tag_key == 13 or tag_key == 24 :  # Fuego
-            print("sent tag ", tag_key)
-            send_osc_message("/4/multitoggle/2/1", 1.0)  # increase intensity
-            play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", 0.9)
-        elif tag_key == 2 or tag_key == 4 or tag_key == 20 or tag_key == 14 or tag_key == 25:  # Agua
-            play_sound_in_thread("/home/pi/otakiage/fire_down_fd2.wav", 0.7)
-            send_osc_message("/4/multitoggle/2/2", 1.0)  # decrease intensity
-        elif tag_key == 21:  # Clock 1
-            a_pulse_intensity(1/2)
-        elif tag_key == 22:  # Clock 2
-            a_pulse_intensity(2)
-        elif tag_key == 23:  #
-            a_pulse_intensity(.9)
-        elif tag_key == 6 :
-            print("Darya")
-            send_osc_message("/4/multitoggle/3/3", 1.0)
-        elif tag_key == 7:
-            print("Darya")
-            send_osc_message("/4/multitoggle/3/3", 1.0)
-        elif tag_key == 5:
-            print("mario")
-            send_osc_message("/4/multitoggle/2/7", 1.0)  # mario
-        elif tag_key == 8:
-            print("birds")
-            send_osc_message("/4/multitoggle/3/2", 1.0)
-        elif tag_key == 28:
-            print("restart light")
-            send_osc_message("/4/multitoggle/4/3", 1.0)
-        elif tag_key == 26:
-            print("prev light")
-            send_osc_message("/4/multitoggle/4/1", 1.0)
-        elif tag_key == 27:
-            print("next light")
-            send_osc_message("/4/multitoggle/4/2", 1.0)
-        elif tag_key == 29:
-            print("wish")
-            send_osc_message("/4/multitoggle/5/1", 1.0)
-        elif tag_key == 31 and previous_tag_key != 31:                
-            send_osc_message("/2/push1", 1.0)
-        elif tag_key == 32 and previous_tag_key != 32:
-            send_osc_message("/2/push2", 1.0)
-        elif tag_key == 33 and previous_tag_key != 33:
-            send_osc_message("/2/push3", 1.0)
-        elif tag_key == 34 and previous_tag_key != 34:
-            send_osc_message("/2/push4", 1.0)
-        elif tag_key == 35 and previous_tag_key != 35:
-            print("Light - dummy moment")
-            send_osc_message("/2/push16", 1.0)
-        elif tag_key in {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}:
-            if tag_key == previous_tag_key:
-                print("repeated oraculo")
-                send_osc_message("/4/multitoggle/2/8", 1.0)  # error
-            else:
-                print("oraculo")
-                send_osc_message("/4/multitoggle/3/1", 1.0) #play random message
-        else:
-            #new tag - show it so that it can be imported
-            print("unassigned tag:", tag_key)
-            send_osc_message("/4/multitoggle/2/8", 1.0)  # error
-            uid_hex = " ".join(format(x, '02x') for x in uid)
+        if previous_tag_key != tag_key:  # new tag detected, for tags that are "one time use" (not cumulative)
+            tag_message = rfid_tags.get(tag_key, {}).get("message", "Unknown tag")
+            print(f"Tag {tag_key} detected. {tag_message}. Previous tag: {previous_tag_key}")
 
 
-        # Stop the breathing effect
-        if breathing_effect_running:
-            breathing_effect.stop()
-            breathing_effect_running = False
 
-        # Run other light effects
-        shine_light_effect(ring=1)
-        tag_read_light_effect(ring=1)
-        move_light_effect(ring=1)
+            if tag_key == 1 or tag_key == 3 or tag_key == 13 or tag_key == 24 or tag_key == 41 or tag_key == 43:  # Fuego
+                print("sent tag ", tag_key)
+                send_osc_message("/4/multitoggle/2/1", 1.0)  # increase intensity
+                play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", 0.9)
+            elif tag_key == 2 or tag_key == 4 or tag_key == 20 or tag_key == 14 or tag_key == 25 or tag_key == 42 or tag_key == 44:  # Agua
+                play_sound_in_thread("/home/pi/otakiage/fire_down_fd2.wav", 0.6)
+                send_osc_message("/4/multitoggle/2/2", 1.0)  # decrease intensity
+            elif tag_key == 21:  # Clock 1
+                a_pulse_intensity(1/2)
+            elif tag_key == 22:  # Clock 2
+                a_pulse_intensity(2)
+            elif tag_key == 23:  #
+                a_pulse_intensity(.9)
+            elif tag_key == 6 :
+                print("Darya")
+                send_osc_message("/4/multitoggle/3/3", 1.0)
+            elif tag_key == 7:
+                print("Darya")
+                send_osc_message("/4/multitoggle/3/3", 1.0)
+            elif tag_key == 5:
+                print("mario")
+                send_osc_message("/4/multitoggle/2/7", 1.0)  # mario
+            elif tag_key == 8:
+                print("birds")
+                send_osc_message("/4/multitoggle/3/2", 1.0)
+            elif tag_key == 28:
+                print("restart light")
+                send_osc_message("/4/multitoggle/4/3", 1.0)
+            elif tag_key == 26:
+                print("prev light")
+                send_osc_message("/4/multitoggle/4/1", 1.0)
+            elif tag_key == 27:
+                print("next light")
+                send_osc_message("/4/multitoggle/4/2", 1.0)
+            elif tag_key == 29:
+                print("wish")
+                send_osc_message("/4/multitoggle/5/1", 1.0)
+            elif tag_key == 31 and previous_tag_key != 31:                
+                send_osc_message("/2/push1", 1.0)
+                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+            elif tag_key == 32 and previous_tag_key != 32:
+                send_osc_message("/2/push2", 1.0)
+                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+            elif tag_key == 33 and previous_tag_key != 33:
+                send_osc_message("/2/push3", 1.0)
+                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+            elif tag_key == 34 and previous_tag_key != 34:
+                send_osc_message("/2/push4", 1.0)
+                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+            elif tag_key == 35 and previous_tag_key != 35:
+                print("Light - dummy moment")
+                send_osc_message("/2/push16", 1.0)
+                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+            elif tag_key in {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}:
+                if tag_key == previous_tag_key:
+                    print("repeated oraculo")
+                    send_osc_message("/4/multitoggle/2/8", 1.0)  # error
+                else:
+                    print("oraculo")
+                    send_osc_message("/4/multitoggle/3/1", 1.0) #play random message
+            elif tag_key == 999: # unknown tag
+                light_color = (0, .5, .5)  # color is teal
+                uid_hex = " ".join(format(x, '02x') for x in uid)
+                print("unassigned tag UID:", uid_hex)
+                # output in this format :     30: {"uid": [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], "message": "AVAILABLE"},
+                uid_hex = " ".join(format(x, '02x') for x in uid)
+                print(f"    {tag_key}: {{\"uid\": [{uid_hex}], \"message\": \"AVAILABLE\"}}")
+            else: # known but unmanaged tag (not assigned in this loop)
+                light_color = (0.5,0.3,0.0) #color is orange
+                #known but unmanaged tag
+                print("Known tag:", tag_key, "hex:", tag_key)
 
-    elif previous_tag_key != tag_key and tag_key is None: # tag removed
-        print("Tag removed")
-        fadeout_light_effect(ring=1)
-        # Restart the breathing effect if not running
-        if not breathing_effect_running:
-            breathing_effect = PulseEffect(steps=15, ring=1)
-            breathing_effect.start()
-            breathing_effect_running = True
+            # Stop the breathing effect
+            if breathing_effect_running:
+                breathing_effect.stop()
+                breathing_effect_running = False
+
+            # Run other light effects
+            shine_light_effect(ring=1)
+            tag_read_light_effect(ring=1)
+            move_light_effect(ring=1)
+            le_set(color=light_color)  #light color when a tag is held
+
+
+
+    elif uid is None and previous_tag_key != tag_key: # tag removed
+            print("]")
+            fadeout_light_effect(ring=1)
+            # Restart the breathing effect if not running
+            if not breathing_effect_running:
+                breathing_effect = PulseEffect(steps=15, ring=1)
+                breathing_effect.start()
+                breathing_effect_running = True
+        
 
     previous_tag_key=tag_key
 
