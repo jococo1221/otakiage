@@ -10,6 +10,7 @@ import socket
 import subprocess
 import random
 import os
+import sys
 
 #Get RFID tag data
 DB_PATH = os.path.join(os.path.dirname(__file__), "rfid_tags.db")
@@ -25,6 +26,8 @@ osc.start()
 
 # Initialize global variables
 previous_tag_key = 0
+
+debounce=0.1 # default debounce
 
 # Preset parameters
 pulse_intensity = .5
@@ -368,7 +371,59 @@ def send_osc_message(address, value):
     #     print(f"Error sending OSC message to {address}: {e}")
     #     f_silent_error()
 
-debounce=0.1 # default debounce
+
+def copy_tag_workflow():
+    print("\n[CopyTag] Scan OLD tag within 10s...")
+    old = pn532.read_passive_target(timeout=10.0)
+    if not old:
+        print("[CopyTag] Timeout waiting for OLD tag.")
+        f_error()
+        return
+
+    if not store.get_by_uid(old):
+        print("[CopyTag] OLD tag not found in DB.")
+        f_error()
+        return
+
+    # ✅ play ack + debounce
+    f_ack()
+    time.sleep(1.0)
+
+    print("[CopyTag] Now scan NEW tag within 15s...")
+    new = pn532.read_passive_target(timeout=15.0)
+    if not new:
+        print("[CopyTag] Timeout waiting for NEW tag.")
+        f_error()
+        return
+
+    if store.get_by_uid(new):
+        print("[CopyTag] NEW tag already exists; aborting.")
+        f_error()
+        return
+
+    res = store.copy_tag(old, new)
+    if res:
+        old_key, new_key = res
+        print(f"[CopyTag] Copied tag {old_key} → {new_key}")
+        f_ack()
+    else:
+        print("[CopyTag] OLD tag lookup failed.")
+        f_error()
+
+def admin_keyboard():
+    print("[Admin] Press 'c' + Enter to copy a tag; 'r' + Enter to reload DB (optional).")
+    while True:
+        line = sys.stdin.readline().strip().lower()
+        if line == "c":
+            copy_tag_workflow()
+        elif line == "r":
+            # optional: if you anticipate external edits, you can rebuild the store or reopen connection.
+            print("[Admin] Reload not implemented; DB writes are live.")
+        else:
+            print("[Admin] Unknown command.")
+
+
+threading.Thread(target=admin_keyboard, daemon=True).start()
 
 # Main loop
 while True:
