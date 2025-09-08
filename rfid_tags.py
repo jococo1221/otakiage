@@ -44,15 +44,4 @@ rfid_tags = {
     42: {"uid": [0x04, 0xeb, 0x56, 0xc6, 0x79, 0x00, 0x00], "function": "decrease_intensity", "message": "Less light baton"},
     43: {"uid": [0x04, 0x81, 0x8a, 0xea, 0xd1, 0x64, 0x80], "function": "increase_intensity", "message": "More light card"},
     44: {"uid": [0x04, 0x89, 0x8a, 0xea, 0xd1, 0x64, 0x80], "function": "decrease_intensity", "message": "Less light card"},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # : {"uid": , "message": ""},
-    # 7: {"uid": [0x04, 0x20, 0xee, 0x1a, 0x5c, 0x15, 0x90], "message": "Ticket"},
-    # : {"uid": [0xb3, 0xc2,  0x00, 0xfd, 0x8c], "message": "White card"},
-    1000: {"uid": [0x04, 0x90, 0x57, 0xc6, 0x79, 0x00, 0x00], "function": "none", "message": "Dummy, without comma"}
 }

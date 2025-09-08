@@ -11,10 +11,8 @@ import subprocess
 import random
 import os
 
-#Get RFID tag data
-DB_PATH = os.path.join(os.path.dirname(__file__), "rfid_tags.db")
-from tag_store import TagStore
-store = TagStore(DB_PATH)
+#Parts of this code on externa files.
+from rfid_tags import rfid_tags
 
 import pygame
 
@@ -99,12 +97,12 @@ def play_sound_in_thread(file_path, volume=1.0):
 
 # Function to detect RFID tag
 def detect_tag(uid):
-    row = store.get_by_uid(uid)
-    if row:
-        tag_key, _message, _function = row
-        return tag_key
+    # Check if the UID matches any known tags
+    for tag_key, tag_data in rfid_tags.items():
+        if uid == bytearray(tag_data["uid"]):
+            return tag_key
+    # If no match is found, return 999
     return 999
-
 
 # LED animation functions
 def shine_light_effect(delay=0.01, steps=5, ring=1):
@@ -383,12 +381,12 @@ while True:
         print(".", end="", flush=True)
 
         if previous_tag_key != tag_key:  # new tag detected, for tags that are "one time use" (not cumulative)
-            dbrow = store.get_by_key(tag_key) if tag_key != 999 else None
-            tag_message = dbrow[2] if dbrow else "Unknown tag"   # message
-            tag_function = dbrow[3] if dbrow else "none"         # function
-
+            tag_message = rfid_tags.get(tag_key, {}).get("message", "Unknown tag")
             print(f"Tag {tag_key} detected. {tag_message}. Previous tag: {previous_tag_key}")
 
+
+
+            tag_function = rfid_tags.get(tag_key, {}).get("function", "none")
 
             if tag_function == "increase_intensity":
                 print("sent tag ", tag_key)
