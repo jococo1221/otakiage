@@ -64,3 +64,14 @@ class TagStore:
     def next_free_key(self) -> int:
         (max_key,) = self.conn.execute("SELECT COALESCE(MAX(tag_key),0) FROM tags").fetchone()
         return (max_key or 0) + 1
+
+    def delete_by_uid(self, uid_bytes) -> int:
+        uid_hex = self._hex(uid_bytes)
+        cur = self.conn.execute("DELETE FROM tags WHERE uid_hex = ?", (uid_hex,))
+        self.conn.commit()
+        return cur.rowcount  # number of rows removed
+
+    def delete_by_key(self, tag_key:int) -> int:
+        cur = self.conn.execute("DELETE FROM tags WHERE tag_key = ?", (tag_key,))
+        self.conn.commit()
+        return cur.rowcount

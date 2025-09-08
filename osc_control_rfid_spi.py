@@ -17,6 +17,8 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "rfid_tags.db")
 from tag_store import TagStore
 store = TagStore(DB_PATH)
 
+admin_active = threading.Event()
+
 import pygame
 
 #external osc_safe.py
@@ -373,60 +375,135 @@ def send_osc_message(address, value):
 
 
 def copy_tag_workflow():
-    print("\n[CopyTag] Scan OLD tag within 10s...")
-    old = pn532.read_passive_target(timeout=10.0)
-    if not old:
-        print("[CopyTag] Timeout waiting for OLD tag.")
-        f_error()
-        return
+    admin_active.set()
+    try:
+        # ▼ STOP BREATHING WHILE IN ADMIN
+        global breathing_effect_running, breathing_effect
+        if breathing_effect_running:
+            try:
+                breathing_effect.stop()
+            except Exception as e:
+                print("[Breathing] stop error:", e)
+            breathing_effect_running = False
+        # ▲
 
-    if not store.get_by_uid(old):
-        print("[CopyTag] OLD tag not found in DB.")
-        f_error()
-        return
+        le_set(color=(0,0,.2))  # dim blue - admin indicator
+        print("\n[CopyTag] Scan OLD tag within 15s...")
+        old = pn532.read_passive_target(timeout=15.0)
+        if not old:
+            print("[CopyTag] Timeout waiting for OLD tag.")
+            f_error(); return
+        if not store.get_by_uid(old):
+            print("[CopyTag] OLD tag not in DB.")
+            f_error(); return
 
-    # ✅ play ack + debounce
-    f_ack()
-    time.sleep(1.0)
-
-    print("[CopyTag] Now scan NEW tag within 15s...")
-    new = pn532.read_passive_target(timeout=15.0)
-    if not new:
-        print("[CopyTag] Timeout waiting for NEW tag.")
-        f_error()
-        return
-
-    if store.get_by_uid(new):
-        print("[CopyTag] NEW tag already exists; aborting.")
-        f_error()
-        return
-
-    res = store.copy_tag(old, new)
-    if res:
-        old_key, new_key = res
-        print(f"[CopyTag] Copied tag {old_key} → {new_key}")
         f_ack()
-    else:
-        print("[CopyTag] OLD tag lookup failed.")
-        f_error()
+        time.sleep(1.0)  # debounce
+
+        
+        print("[CopyTag] Now scan NEW tag within 15s...")
+        le_set(color=(.2,.2,0))  # dim yellow - ready to copy indicator
+        new = pn532.read_passive_target(timeout=15.0)
+        if not new:
+            print("[CopyTag] Timeout waiting for NEW tag.")
+            f_error(); return
+        if store.get_by_uid(new):
+            print("[CopyTag] NEW tag already exists; abort.")
+            f_error(); return
+
+        old_key, new_key = store.copy_tag(old, new) or (None, None)
+        if old_key is not None:
+            print(f"[CopyTag] Copied {old_key} → {new_key}")
+            le_set(color=(0,.2,0))  # dim green - success indicator
+            f_ack()
+            time.sleep(1.0)  # debounce
+        else:
+            print("[CopyTag] OLD tag lookup failed.")
+            f_error()
+    finally:
+        # ▼ RESTART BREATHING AFTER ADMIN
+        if not breathing_effect_running:
+            breathing_effect = PulseEffect(steps=15, ring=1)
+            breathing_effect.start()
+            breathing_effect_running = True
+        # ▲
+        admin_active.clear()
+
+def delete_tag_workflow():
+    admin_active.set()
+    try:
+        global breathing_effect_running, breathing_effect
+        if breathing_effect_running:
+            try:
+                breathing_effect.stop()
+            except Exception as e:
+                print("[Breathing] stop error:", e)
+            breathing_effect_running = False
+
+        le_set(color=(0,0,.2))  # dim blue - admin indicator
+        print("\n[DeleteTag] Scan tag within 15s...")
+        uid = pn532.read_passive_target(timeout=15.0)
+        if not uid:
+            print("[DeleteTag] Timeout."); f_error(); return
+
+        row = store.get_by_uid(uid)
+        if not row:
+            print("[DeleteTag] Not found."); f_error(); return
+
+        tag_key, message, function = row
+        print(f"[DeleteTag] Found tag_key={tag_key} ({function}) {message!r}")
+        le_set(color=(0,.2,0))  # dim green - success indicator
+        f_ack(); time.sleep(1.0)
+
+        removed = store.delete_by_uid(uid)
+        print("[DeleteTag] Deleted." if removed else "[DeleteTag] Nothing removed.")
+        f_ack() if removed else f_error()
+    finally:
+        if not breathing_effect_running:
+            breathing_effect = PulseEffect(steps=15, ring=1)
+            breathing_effect.start()
+            breathing_effect_running = True
+        admin_active.clear()
+
 
 def admin_keyboard():
-    print("[Admin] Press 'c' + Enter to copy a tag; 'r' + Enter to reload DB (optional).")
+    print("[Admin] Type 'c' then Enter to copy tag; 'd' to delete tag; 'r' to reload.")
     while True:
-        line = sys.stdin.readline().strip().lower()
-        if line == "c":
+        try:
+            line = input()
+        except EOFError:
+            time.sleep(0.2)
+            continue
+        if not line:
+            continue
+        s = line.strip().lower()
+
+        # tolerate repeated letters like "cc", "dd"
+        if "c" in s and set(s) <= {"c"}:
+            print("[Admin] Copy mode…")
             copy_tag_workflow()
-        elif line == "r":
-            # optional: if you anticipate external edits, you can rebuild the store or reopen connection.
+            continue
+        if "d" in s and set(s) <= {"d"}:
+            print("[Admin] Delete mode…")
+            delete_tag_workflow()
+            continue
+        if s and s[0] == "r":
             print("[Admin] Reload not implemented; DB writes are live.")
-        else:
-            print("[Admin] Unknown command.")
+            continue
+
+        print(f"[Admin] Unknown command: {s!r}")
+
 
 
 threading.Thread(target=admin_keyboard, daemon=True).start()
 
 # Main loop
 while True:
+
+    if admin_active.is_set():
+        time.sleep(0.05)
+        continue
+
     tag_key = None
     start_time = time.time()
     uid = None
