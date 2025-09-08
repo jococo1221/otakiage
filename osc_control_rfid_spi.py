@@ -386,66 +386,65 @@ while True:
 
 
 
-            if tag_key == 1 or tag_key == 3 or tag_key == 13 or tag_key == 24 or tag_key == 41 or tag_key == 43:  # Fuego
+            tag_function = rfid_tags.get(tag_key, {}).get("function", "none")
+
+            if tag_function == "increase_intensity":
                 print("sent tag ", tag_key)
-                send_osc_message("/4/multitoggle/2/1", 1.0)  # increase intensity
+                send_osc_message("/4/multitoggle/2/1", 1.0)
                 play_sound_in_thread("/home/pi/otakiage/fire_up_fd.wav", 0.9)
-            elif tag_key == 2 or tag_key == 4 or tag_key == 20 or tag_key == 14 or tag_key == 25 or tag_key == 42 or tag_key == 44:  # Agua
+            elif tag_function == "decrease_intensity":
                 play_sound_in_thread("/home/pi/otakiage/fire_down_fd2.wav", 0.6)
-                send_osc_message("/4/multitoggle/2/2", 1.0)  # decrease intensity
-            elif tag_key == 21:  # Clock 1
+                send_osc_message("/4/multitoggle/2/2", 1.0)
+            elif tag_function == "clock_half":
                 a_pulse_intensity(1/2)
-            elif tag_key == 22:  # Clock 2
+            elif tag_function == "clock_double":
                 a_pulse_intensity(2)
-            elif tag_key == 23:  #
+            elif tag_function == "clock_point9":
                 a_pulse_intensity(.9)
-            elif tag_key == 6 :
+            elif tag_function == "darya":
                 print("Darya")
                 send_osc_message("/4/multitoggle/3/3", 1.0)
-            elif tag_key == 7:
-                print("Darya")
-                send_osc_message("/4/multitoggle/3/3", 1.0)
-            elif tag_key == 5:
+            elif tag_function == "mario":
                 print("mario")
-                send_osc_message("/4/multitoggle/2/7", 1.0)  # mario
-            elif tag_key == 8:
+                send_osc_message("/4/multitoggle/2/7", 1.0)
+            elif tag_function == "birds":
                 print("birds")
                 send_osc_message("/4/multitoggle/3/2", 1.0)
-            elif tag_key == 28:
+            elif tag_function == "restart_light":
                 print("restart light")
                 send_osc_message("/4/multitoggle/4/3", 1.0)
-            elif tag_key == 26:
+            elif tag_function == "prev_light":
                 print("prev light")
                 send_osc_message("/4/multitoggle/4/1", 1.0)
-            elif tag_key == 27:
+            elif tag_function == "next_light":
                 print("next light")
                 send_osc_message("/4/multitoggle/4/2", 1.0)
-            elif tag_key == 29:
+            elif tag_function == "wish":
                 print("wish")
                 send_osc_message("/4/multitoggle/5/1", 1.0)
-            elif tag_key == 31 and previous_tag_key != 31:                
+            elif tag_function == "push1" and previous_tag_key != 31:
                 send_osc_message("/2/push1", 1.0)
                 play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
-            elif tag_key == 32 and previous_tag_key != 32:
+            elif tag_function == "push2" and previous_tag_key != 32:
                 send_osc_message("/2/push2", 1.0)
                 play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
-            elif tag_key == 33 and previous_tag_key != 33:
+            elif tag_function == "push3" and previous_tag_key != 33:
                 send_osc_message("/2/push3", 1.0)
                 play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
-            elif tag_key == 34 and previous_tag_key != 34:
+            elif tag_function == "push4" and previous_tag_key != 34:
                 send_osc_message("/2/push4", 1.0)
                 play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
-            elif tag_key == 35 and previous_tag_key != 35:
+            elif tag_function == "push16" and previous_tag_key != 35:
                 print("Light - dummy moment")
                 send_osc_message("/2/push16", 1.0)
                 play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
-            elif tag_key in {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19}:
+            elif tag_function == "oraculo":
                 if tag_key == previous_tag_key:
                     print("repeated oraculo")
-                    send_osc_message("/4/multitoggle/2/8", 1.0)  # error
+                    send_osc_message("/4/multitoggle/2/8", 1.0)
                 else:
                     print("oraculo")
-                    send_osc_message("/4/multitoggle/3/1", 1.0) #play random message
+                    send_osc_message("/4/multitoggle/3/1", 1.0)
             elif tag_key == 999: # unknown tag
                 light_color = (0, .5, .5)  # color is teal
                 uid_hex = " ".join(format(x, '02x') for x in uid)
