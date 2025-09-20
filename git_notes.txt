@@ -4,6 +4,7 @@ git fetch origin #I think I need this - fetch the latest changes from the remote
 git branch -a #List all remote branches - to verify name of the branch 
 git add * #Add all files
 git diff --stat origin/main #See status of local repository compared to remote
+	alt: git diff --stat origin/rpizerow
 git commit -m "" #Comit with message between quotes
 git push origin main 
 
