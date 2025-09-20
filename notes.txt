@@ -1,5 +1,11 @@
 
 
+-- Modify tag to new function
+sqlite3 rfid_tags.db "UPDATE tags SET message = 'Copy Tag', function = 'copy_tag', updated_at = datetime('now') WHERE tag_key = 46;"
+-- Check
+sqlite3 rfid_tags.db "SELECT tag_key, uid_hex, message, function, updated_at FROM tags WHERE tag_key = 46;"
+
+
 -- run with logs (saved on home/logs directory)
 /usr/bin/python /home/pi/otakiage/fire_osc.py > ~/logs/no_errors.txt 2> ~/logs/errors.txt &
 

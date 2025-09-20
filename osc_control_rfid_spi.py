@@ -290,6 +290,11 @@ class PulseEffect(threading.Thread):
 def f_ack():
     play_sound_in_thread("/home/pi/otakiage/drop.wav", 0.7)
 
+def f_ack_av():
+    play_sound_in_thread("/home/pi/otakiage/drop.wav", 0.7)
+    fadeout_light_effect(color=(.5,.5,.5))
+
+
 def f_error():
     play_sound_in_thread("/home/pi/otakiage/drop.wav", 0.7)
     time.sleep(0.2)
@@ -387,6 +392,10 @@ def copy_tag_workflow():
             breathing_effect_running = False
         # ▲
 
+        f_ack_av()
+        print(".....")
+        time.sleep(3.0)  # debounce
+
         le_set(color=(0,0,.2))  # dim blue - admin indicator
         print("\n[CopyTag] Scan OLD tag within 15s...")
         old = pn532.read_passive_target(timeout=15.0)
@@ -397,7 +406,8 @@ def copy_tag_workflow():
             print("[CopyTag] OLD tag not in DB.")
             f_error(); return
 
-        f_ack()
+        f_ack_av()
+        print(".")
         time.sleep(1.0)  # debounce
 
         
@@ -439,6 +449,12 @@ def delete_tag_workflow():
             except Exception as e:
                 print("[Breathing] stop error:", e)
             breathing_effect_running = False
+
+        # ack + debounce
+        f_ack_av()
+        print(".....")
+        time.sleep(3.0)
+
 
         le_set(color=(0,0,.2))  # dim blue - admin indicator
         print("\n[DeleteTag] Scan tag within 15s...")
@@ -579,6 +595,12 @@ while True:
                 else:
                     print("oraculo")
                     send_osc_message("/4/multitoggle/3/1", 1.0)
+            elif tag_function == "copy_tag":
+                print("copy tag command triggered")
+                copy_tag_workflow()
+            elif tag_function == "delete_tag":
+                print("delete tag command triggered")
+                delete_tag_workflow()
             elif tag_key == 999: # unknown tag
                 light_color = (0, .5, .5)  # color is teal
                 uid_hex = " ".join(format(x, '02x') for x in uid)
