@@ -1,3 +1,25 @@
+
+# Git Safe Backup & Restore
+
+## Backup (source of truth)
+git add -A
+git commit -m "msg"
+git push origin main
+
+## Restore (other device)
+git fetch origin
+git status
+git log --oneline main..origin/main   # optional: see missing commits
+git diff --stat origin/main           # optional: see file changes
+
+# merge changes (keep local edits)
+git pull origin main
+
+# OR overwrite with remote (discard local edits)
+git reset --hard origin/main
+
+
+-----
 Useful git:
 --pushing
 git fetch origin #I think I need this - fetch the latest changes from the remote repository to ensure you have the most up-to-date version.
