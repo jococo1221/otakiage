@@ -586,8 +586,9 @@ while True:
                 play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
             elif tag_function == "push16" and previous_tag_key != 35:
                 print("Light - dummy moment")
-                send_osc_message("/2/push16", 1.0)
-                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+                send_osc_message("/effects/fireworks", 1.0)
+                ##send_osc_message("/2/push16", 1.0) #for now different than push
+                ##play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
             elif tag_function == "oraculo":
                 if tag_key == previous_tag_key:
                     print("repeated oraculo")
