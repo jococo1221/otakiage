@@ -23,7 +23,7 @@ import pygame
 
 #external osc_safe.py
 from osc_safe import OSCSafeClient
-osc = OSCSafeClient(host="shine.local", port=5006, refresh_sec=0)  # set to IP for max reliability
+osc = OSCSafeClient(host="downwhen.local", port=5006, refresh_sec=0)  # set to IP for max reliability
 osc.start()
 
 # Initialize global variables
@@ -44,7 +44,7 @@ pn532 = PN532_I2C(i2c, debug=False)
 pn532.SAM_configuration()
 
 # Define OSC client with retry mechanism
-args = {"ip": "shine.local", "port": 5006}
+args = {"ip": "downwhen.local", "port": 5006}
 max_retries = 5
 retry_delay = 5
 client = None
