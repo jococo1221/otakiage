@@ -574,16 +574,20 @@ while True:
                 send_osc_message("/4/multitoggle/5/1", 1.0)
             elif tag_function == "push1" and previous_tag_key != 31:
                 send_osc_message("/2/push1", 1.0)
-                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+                send_osc_message("/effects/fireworks", 1.0)
+                #play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
             elif tag_function == "push2" and previous_tag_key != 32:
                 send_osc_message("/2/push2", 1.0)
-                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+                send_osc_message("/effects/fireworks", 1.0)
+                #play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
             elif tag_function == "push3" and previous_tag_key != 33:
                 send_osc_message("/2/push3", 1.0)
-                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+                send_osc_message("/effects/fireworks", 1.0)
+                #play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
             elif tag_function == "push4" and previous_tag_key != 34:
                 send_osc_message("/2/push4", 1.0)
-                play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
+                send_osc_message("/effects/fireworks", 1.0)
+                #play_sound_in_thread("/home/pi/otakiage/audio/fireworks5.wav", 0.5)
             elif tag_function == "push16" and previous_tag_key != 35:
                 print("Light - dummy moment")
                 send_osc_message("/effects/fireworks", 1.0)

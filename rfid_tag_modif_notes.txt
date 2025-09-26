@@ -1,0 +1,2 @@
+sqlite3 rfid_tags.db ".dump"
+sqlite3 rfid_tags.db "UPDATE tags SET message='10min moment log', function='push3' WHERE tag_key=66;"
